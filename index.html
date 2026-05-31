@@ -7,26 +7,18 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --bg:#0d0f12;--surface:#151820;--surface2:#1c2030;
-      --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
-      --text:#e8eaf0;--muted:#7a8099;
-      --accent:#4f8ef7;--accent2:#7c5cfc;
-      --green:#34d399;--coral:#f87171;--amber:#fbbf24;--purple:#a78bfa;
-      --radius:14px;--radius-sm:8px;
-    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+    :root{--bg:#0d0f12;--surface:#151820;--surface2:#1c2030;--border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);--text:#e8eaf0;--muted:#7a8099;--accent:#4f8ef7;--accent2:#7c5cfc;--green:#34d399;--coral:#f87171;--amber:#fbbf24;--purple:#a78bfa;--radius:14px;--radius-sm:8px;}
     body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;line-height:1.5;}
     #config-banner{background:#0d1526;border-bottom:1px solid var(--border2);padding:12px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
     #config-banner label{font-size:12px;color:var(--muted);white-space:nowrap;}
     #config-banner input{background:rgba(255,255,255,0.05);border:1px solid var(--border2);border-radius:var(--radius-sm);color:var(--text);padding:6px 10px;font-size:12px;font-family:'DM Mono',monospace;width:300px;}
     #config-banner input:focus{outline:none;border-color:var(--accent);}
     .save-btn{background:var(--accent);color:#fff;border:none;padding:6px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;}
-    .save-btn:hover{opacity:0.85;}
     #connect-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 60px);padding:2rem;text-align:center;}
     .logo-ring{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;margin-bottom:1.5rem;box-shadow:0 0 40px rgba(79,142,247,0.3);}
     #connect-screen h1{font-size:28px;font-weight:600;margin-bottom:10px;}
-    #connect-screen p{color:var(--muted);max-width:380px;font-size:15px;}
+    #connect-screen>p{color:var(--muted);max-width:380px;font-size:15px;}
     .connect-btn{display:inline-flex;align-items:center;gap:10px;margin-top:2rem;background:#fff;color:#333;border:none;padding:14px 28px;border-radius:var(--radius);font-size:15px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.4);transition:transform 0.15s;}
     .connect-btn:hover{transform:translateY(-2px);}
     .scope-pill{background:rgba(79,142,247,0.1);border:1px solid rgba(79,142,247,0.25);color:var(--accent);font-size:11px;padding:4px 10px;border-radius:20px;}
@@ -179,9 +171,7 @@
       <button class="tab" onclick="switchTab(this,'sleep')">Sleep</button>
       <button class="tab" onclick="switchTab(this,'calories')">Calories</button>
     </div>
-    <div class="chart-wrap" style="height:240px;">
-      <canvas id="mainChart"></canvas>
-    </div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="mainChart"></canvas></div>
   </div>
 
   <div class="chart-row">
@@ -190,12 +180,11 @@
       <div class="sleep-stages" id="sleep-stages"><div style="color:var(--muted);font-size:13px;">Loading…</div></div>
     </div>
     <div class="card">
-      <div class="card-header"><div><div class="card-title">Heart rate zones</div><div class="card-sub">Today's active minutes</div></div></div>
+      <div class="card-header"><div><div class="card-title">Heart rate zones</div><div class="card-sub">Today</div></div></div>
       <div class="chart-wrap" style="height:180px;"><canvas id="hrZoneChart"></canvas></div>
       <div id="hr-zone-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:11px;color:var(--muted);"></div>
     </div>
   </div>
-
   <div class="footer-note">Data sourced from Google Health API · Fitbit device · Read-only</div>
 </div>
 
@@ -208,78 +197,75 @@ const SCOPES = [
   'https://www.googleapis.com/auth/googlehealth.profile.readonly',
   'openid','profile','email'
 ].join(' ');
+
+// NOTE: URL path uses kebab-case e.g. "daily-resting-heart-rate"
+// filter params use snake_case e.g. "daily_resting_heart_rate"
 const BASE = 'https://health.googleapis.com/v4/users/me/dataTypes';
 
-let accessToken = null, mainChart = null, hrZoneChart = null, currentTab = 'steps', chartData = {};
+let accessToken=null, mainChart=null, hrZoneChart=null, currentTab='steps', chartData={};
 
 function getClientId(){ return localStorage.getItem('ghealth_client_id')||''; }
-
 function saveClientId(){
-  const val = document.getElementById('client-id-input').value.trim();
-  if(!val){ alert('Please enter your Client ID first.'); return; }
-  localStorage.setItem('ghealth_client_id', val);
+  const val=document.getElementById('client-id-input').value.trim();
+  if(!val){alert('Please enter your Client ID first.');return;}
+  localStorage.setItem('ghealth_client_id',val);
   startOAuth();
 }
 
-window.addEventListener('load', ()=>{
-  const saved = getClientId();
-  if(saved) document.getElementById('client-id-input').value = saved;
-  const hash = new URLSearchParams(window.location.hash.replace('#','?').slice(1));
-  const token = hash.get('access_token');
-  const error = hash.get('error');
-  if(error){ showConnectError('OAuth error: '+error); window.history.replaceState({},document.title,window.location.pathname); return; }
-  if(token){ accessToken=token; sessionStorage.setItem('ghealth_token',token); window.history.replaceState({},document.title,window.location.pathname); showDashboard(); return; }
-  const stored = sessionStorage.getItem('ghealth_token');
-  if(stored){ accessToken=stored; showDashboard(); }
+window.addEventListener('load',()=>{
+  const saved=getClientId();
+  if(saved) document.getElementById('client-id-input').value=saved;
+  const hash=new URLSearchParams(window.location.hash.replace('#','?').slice(1));
+  const token=hash.get('access_token'), error=hash.get('error');
+  if(error){showConnectError('OAuth error: '+error);window.history.replaceState({},document.title,window.location.pathname);return;}
+  if(token){accessToken=token;sessionStorage.setItem('ghealth_token',token);window.history.replaceState({},document.title,window.location.pathname);showDashboard();return;}
+  const stored=sessionStorage.getItem('ghealth_token');
+  if(stored){accessToken=stored;showDashboard();}
 });
 
 function startOAuth(){
-  const clientId = getClientId();
-  if(!clientId){ showConnectError('Please enter your Client ID in the banner above.'); return; }
-  const params = new URLSearchParams({ client_id:clientId, redirect_uri:REDIRECT_URI, response_type:'token', scope:SCOPES, include_granted_scopes:'true', prompt:'consent' });
-  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  const clientId=getClientId();
+  if(!clientId){showConnectError('Please enter your Client ID in the banner above.');return;}
+  const params=new URLSearchParams({client_id:clientId,redirect_uri:REDIRECT_URI,response_type:'token',scope:SCOPES,include_granted_scopes:'true',prompt:'consent'});
+  window.location.href=`https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
-
-function showConnectError(msg){ const el=document.getElementById('connect-error'); el.textContent='⚠ '+msg; el.style.display='block'; }
-
-function signOut(){ sessionStorage.removeItem('ghealth_token'); accessToken=null; document.getElementById('dashboard').style.display='none'; document.getElementById('connect-screen').style.display='flex'; }
+function showConnectError(msg){const el=document.getElementById('connect-error');el.textContent='⚠ '+msg;el.style.display='block';}
+function signOut(){sessionStorage.removeItem('ghealth_token');accessToken=null;document.getElementById('dashboard').style.display='none';document.getElementById('connect-screen').style.display='flex';}
 
 async function showDashboard(){
   document.getElementById('connect-screen').style.display='none';
   document.getElementById('dashboard').style.display='block';
-  await Promise.all([loadProfile(), loadAllData()]);
+  await Promise.all([loadProfile(),loadAllData()]);
 }
 
 // ── API helpers ──
-// GET request (for list endpoints)
 async function apiGet(url){
-  const res = await fetch(url,{headers:{Authorization:`Bearer ${accessToken}`}});
-  if(res.status===401){ signOut(); throw new Error('Token expired'); }
-  if(!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  const res=await fetch(url,{headers:{Authorization:`Bearer ${accessToken}`}});
+  if(res.status===401){signOut();throw new Error('Token expired');}
+  if(!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+async function apiPost(url,body){
+  const res=await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(res.status===401){signOut();throw new Error('Token expired');}
+  if(!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
   return res.json();
 }
 
-// POST request (for dailyRollUp endpoints — body contains date range)
-async function apiPost(url, body){
-  const res = await fetch(url,{
-    method:'POST',
-    headers:{Authorization:`Bearer ${accessToken}`,'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
-  if(res.status===401){ signOut(); throw new Error('Token expired'); }
-  if(!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
-  return res.json();
-}
-
-// Build a civil date object for the API {year, month, day}
-function civilDate(daysAgo=0){
-  const d = new Date();
+// Civil date string YYYY-MM-DD, daysAgo=0 means today
+function civilDateStr(daysAgo=0){
+  const d=new Date();
   d.setDate(d.getDate()-daysAgo);
-  return {year:d.getFullYear(), month:d.getMonth()+1, day:d.getDate()};
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
-
+// Civil date object for POST body
+function civilDateObj(daysAgo=0){
+  const d=new Date();
+  d.setDate(d.getDate()-daysAgo);
+  return {year:d.getFullYear(),month:d.getMonth()+1,day:d.getDate()};
+}
 function dayLabel(daysAgo){
-  const d = new Date();
+  const d=new Date();
   d.setDate(d.getDate()-daysAgo);
   return d.toLocaleDateString('en-SG',{month:'short',day:'numeric'});
 }
@@ -287,120 +273,143 @@ function dayLabel(daysAgo){
 // ── Profile ──
 async function loadProfile(){
   try{
-    const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}}).then(r=>r.json());
-    const name = info.name||info.email||'You';
-    document.getElementById('user-name').textContent = name;
-    document.getElementById('user-email').textContent = info.email||'';
-    document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
-  }catch(e){ document.getElementById('user-name').textContent='Connected'; }
+    const info=await fetch('https://www.googleapis.com/oauth2/v3/userinfo',{headers:{Authorization:`Bearer ${accessToken}`}}).then(r=>r.json());
+    const name=info.name||info.email||'You';
+    document.getElementById('user-name').textContent=name;
+    document.getElementById('user-email').textContent=info.email||'';
+    document.getElementById('user-avatar').textContent=name.charAt(0).toUpperCase();
+  }catch(e){document.getElementById('user-name').textContent='Connected';}
 }
 
 async function loadAllData(){
-  const days = parseInt(document.getElementById('range-select').value);
-  await Promise.all([loadSteps(days), loadHeartRate(days), loadSleep(), loadCalories(days), loadHrZones()]);
+  const days=parseInt(document.getElementById('range-select').value);
+  await Promise.all([loadSteps(days),loadHeartRate(days),loadSleep(),loadCalories(days),loadHrZones()]);
   renderMainChart();
 }
 
-// ── STEPS — POST dailyRollUp with civil time range ──
+// ── STEPS: POST dailyRollUp, type=steps (kebab=steps, same) ──
 async function loadSteps(days){
   try{
-    const body = {
+    const body={
       range:{
-        start:{ date:civilDate(days-1), time:{hours:0,minutes:0,seconds:0} },
-        end:  { date:civilDate(0),      time:{hours:23,minutes:59,seconds:59} }
+        start:{date:civilDateObj(days-1),time:{hours:0,minutes:0,seconds:0}},
+        end:  {date:civilDateObj(0),     time:{hours:23,minutes:59,seconds:59}}
       },
-      windowSizeDays: 1
+      windowSizeDays:1
     };
-    const data = await apiPost(`${BASE}/steps/dataPoints:dailyRollUp`, body);
-    const points = (data.rollupDataPoints||[]);
-    const values = points.map(p=>parseInt(p.steps?.countSum||0));
-    const labels = points.map((_,i)=>dayLabel(days-1-i));
+    const data=await apiPost(`${BASE}/steps/dataPoints:dailyRollUp`,body);
+    const pts=data.rollupDataPoints||[];
+    // Sort by civil start date ascending
+    pts.sort((a,b)=>{
+      const da=a.civilStartTime?.date,db=b.civilStartTime?.date;
+      if(!da||!db) return 0;
+      return new Date(da.year,da.month-1,da.day)-new Date(db.year,db.month-1,db.day);
+    });
+    const values=pts.map(p=>parseInt(p.steps?.countSum||0));
+    const labels=pts.map(p=>{
+      const d=p.civilStartTime?.date;
+      return d?new Date(d.year,d.month-1,d.day).toLocaleDateString('en-SG',{month:'short',day:'numeric'}):'';
+    });
     chartData.steps={labels,values};
 
-    const todaySteps = values[values.length-1]||0;
-    const avg = values.length>1 ? Math.round(values.slice(0,-1).reduce((a,b)=>a+b,0)/(values.length-1)) : todaySteps;
-    const pct = Math.min(Math.round((todaySteps/10000)*100),100);
+    const todaySteps=values[values.length-1]||0;
+    const prev=values.slice(0,-1).filter(v=>v>0);
+    const avg=prev.length?Math.round(prev.reduce((a,b)=>a+b,0)/prev.length):todaySteps;
+    const pct=Math.min(Math.round((todaySteps/10000)*100),100);
     document.getElementById('steps-val').innerHTML=`${todaySteps.toLocaleString()} <span class="metric-unit">steps</span>`;
     document.getElementById('steps-bar').style.width=pct+'%';
     const diff=todaySteps-avg;
     document.getElementById('steps-trend').innerHTML=diff>=0
       ?`<span class="trend-up">↑ +${diff.toLocaleString()} vs avg · ${pct}% of goal</span>`
-      :`<span class="trend-down">↓ ${diff.toLocaleString()} vs avg · ${pct}% of goal</span>`;
+      :`<span class="trend-down">↓ ${Math.abs(diff).toLocaleString()} vs avg · ${pct}% of goal</span>`;
   }catch(e){
     document.getElementById('steps-val').textContent='N/A';
-    document.getElementById('steps-trend').textContent=e.message;
+    document.getElementById('steps-trend').innerHTML=`<span style="color:var(--coral);font-size:10px;">${e.message}</span>`;
     console.error('Steps:',e);
   }
 }
 
-// ── HEART RATE — POST dailyRollUp ──
+// ── HEART RATE: GET list (daily-resting-heart-rate only supports list/reconcile) ──
 async function loadHeartRate(days){
   try{
-    const body = {
-      range:{
-        start:{ date:civilDate(days-1), time:{hours:0,minutes:0,seconds:0} },
-        end:  { date:civilDate(0),      time:{hours:23,minutes:59,seconds:59} }
-      },
-      windowSizeDays: 1
-    };
-    const data = await apiPost(`${BASE}/dailyRestingHeartRate/dataPoints:dailyRollUp`, body);
-    const points = (data.rollupDataPoints||[]);
-    const values = points.map(p=>Math.round(parseFloat(p.dailyRestingHeartRate?.beatsPerMinute||0)));
-    const labels = points.map((_,i)=>dayLabel(days-1-i));
+    const start=civilDateStr(days-1);
+    const end=civilDateStr(0);
+    // filter uses snake_case: daily_resting_heart_rate
+    const filter=`daily_resting_heart_rate.date >= "${start}" AND daily_resting_heart_rate.date <= "${end}"`;
+    const data=await apiGet(`${BASE}/daily-resting-heart-rate/dataPoints?filter=${encodeURIComponent(filter)}&page_size=100`);
+    const pts=(data.dataPoints||[]).sort((a,b)=>{
+      const da=a.dailyRestingHeartRate?.date,db=b.dailyRestingHeartRate?.date;
+      if(!da||!db) return 0;
+      return new Date(da.year,da.month-1,da.day)-new Date(db.year,db.month-1,db.day);
+    });
+    const values=pts.map(p=>Math.round(parseFloat(p.dailyRestingHeartRate?.beatsPerMinute||0)));
+    const labels=pts.map(p=>{
+      const d=p.dailyRestingHeartRate?.date;
+      return d?new Date(d.year,d.month-1,d.day).toLocaleDateString('en-SG',{month:'short',day:'numeric'}):'';
+    });
     chartData.heart={labels,values};
 
-    const todayHr = values[values.length-1]||0;
-    const avg = values.length>1 ? Math.round(values.slice(0,-1).reduce((a,b)=>a+b,0)/(values.length-1)) : todayHr;
-    const pct = Math.min(Math.round(((todayHr-40)/60)*100),100);
-    const diff = todayHr-avg;
-    document.getElementById('hr-val').innerHTML=todayHr?`${todayHr} <span class="metric-unit">bpm</span>`:'N/A';
+    const todayHr=values[values.length-1]||0;
+    const prev=values.slice(0,-1).filter(v=>v>0);
+    const avg=prev.length?Math.round(prev.reduce((a,b)=>a+b,0)/prev.length):todayHr;
+    const pct=Math.min(Math.round(((todayHr-40)/60)*100),100);
+    const diff=todayHr-avg;
+    document.getElementById('hr-val').innerHTML=todayHr?`${todayHr} <span class="metric-unit">bpm</span>`:'No data';
     document.getElementById('hr-bar').style.width=pct+'%';
-    document.getElementById('hr-trend').innerHTML=diff<=0
+    document.getElementById('hr-trend').innerHTML=todayHr?(diff<=0
       ?`<span class="trend-up">↓ ${Math.abs(diff)} vs avg · Good</span>`
-      :`<span class="trend-down">↑ +${diff} vs avg</span>`;
+      :`<span class="trend-down">↑ +${diff} vs avg</span>`):'';
   }catch(e){
     document.getElementById('hr-val').textContent='N/A';
     console.error('Heart rate:',e);
   }
 }
 
-// ── SLEEP — GET list with filter (civil_start_time) ──
+// ── SLEEP: GET list with civil_start_time filter ──
 async function loadSleep(){
   try{
-    // yesterday date for sleep filter
-    const yest = civilDate(1);
-    const yesterdayStr = `${yest.year}-${String(yest.month).padStart(2,'0')}-${String(yest.day).padStart(2,'0')}`;
-    const tod = civilDate(0);
-    const todayStr = `${tod.year}-${String(tod.month).padStart(2,'0')}-${String(tod.day).padStart(2,'0')}`;
-    // sleep uses civil_start_time filter (no UTC Z suffix — civil time)
-    const filter = `sleep.interval.civil_start_time >= "${yesterdayStr}T18:00:00" AND sleep.interval.civil_start_time < "${todayStr}T12:00:00"`;
-    const data = await apiGet(`${BASE}/sleep/dataPoints?filter=${encodeURIComponent(filter)}&pageSize=25`);
+    const yesterday=civilDateStr(1);
+    const today=civilDateStr(0);
+    // sleep civil_start_time — no Z suffix (civil time not UTC)
+    const filter=`sleep.interval.civil_start_time >= "${yesterday}T20:00:00" AND sleep.interval.civil_start_time < "${today}T14:00:00"`;
+    const data=await apiGet(`${BASE}/sleep/dataPoints?filter=${encodeURIComponent(filter)}&page_size=25`);
+    const pts=data.dataPoints||[];
 
-    const points = data.dataPoints||[];
     const stages={deep:0,light:0,rem:0,awake:0};
-    points.forEach(p=>{
-      const type = p.sleep?.classicSleepStage||p.sleep?.stage;
-      const start = new Date(p.startTime||p.sleep?.interval?.startTime);
-      const end   = new Date(p.endTime  ||p.sleep?.interval?.endTime);
-      const mins  = (end-start)/60000;
-      if(!isNaN(mins)&&mins>0){
-        const t = (type||'').toString().toUpperCase();
-        if(t==='3'||t==='DEEP')          stages.deep+=mins;
-        else if(t==='4'||t==='REM')      stages.rem+=mins;
-        else if(t==='1'||t==='AWAKE')    stages.awake+=mins;
-        else                              stages.light+=mins;
+    pts.forEach(p=>{
+      const s=p.sleep;
+      if(!s) return;
+      // Duration from interval
+      const startCivil=s.interval?.civilStartTime;
+      const endCivil=s.interval?.civilEndTime;
+      let mins=0;
+      if(startCivil&&endCivil){
+        const st=new Date(startCivil.date.year,startCivil.date.month-1,startCivil.date.day,startCivil.time?.hours||0,startCivil.time?.minutes||0);
+        const en=new Date(endCivil.date.year,endCivil.date.month-1,endCivil.date.day,endCivil.time?.hours||0,endCivil.time?.minutes||0);
+        mins=(en-st)/60000;
+      } else if(p.startTime&&p.endTime){
+        mins=(new Date(p.endTime)-new Date(p.startTime))/60000;
       }
+      if(mins<=0) return;
+      // Stage classification
+      const classic=s.classicSleepStage?.toString().toUpperCase()||'';
+      const stage=s.stage?.toString().toUpperCase()||'';
+      const combined=classic||stage;
+      if(combined==='3'||combined==='DEEP') stages.deep+=mins;
+      else if(combined==='4'||combined==='REM') stages.rem+=mins;
+      else if(combined==='1'||combined==='AWAKE') stages.awake+=mins;
+      else stages.light+=mins; // LIGHT, ASLEEP, 2, unknown
     });
 
-    const totalMins=stages.deep+stages.light+stages.rem+stages.awake;
-    const h=Math.floor(totalMins/60), m=Math.round(totalMins%60);
-    document.getElementById('sleep-val').innerHTML=totalMins>0?`${h}h ${m}m`:'No data';
-    const pct=Math.min(Math.round((totalMins/480)*100),100);
+    const total=stages.deep+stages.light+stages.rem+stages.awake;
+    const h=Math.floor(total/60),m=Math.round(total%60);
+    document.getElementById('sleep-val').innerHTML=total>0?`${h}h ${m}m`:'No data';
+    const pct=Math.min(Math.round((total/480)*100),100);
     document.getElementById('sleep-bar').style.width=pct+'%';
-    document.getElementById('sleep-trend').innerHTML=totalMins>=420
+    document.getElementById('sleep-trend').innerHTML=total>=420
       ?`<span class="trend-up">↑ Above 7h goal</span>`
       :`<span class="trend-down">↓ Below 7h goal</span>`;
-    renderSleepStages(stages,totalMins);
+    renderSleepStages(stages,total);
   }catch(e){
     document.getElementById('sleep-val').textContent='N/A';
     document.getElementById('sleep-stages').innerHTML=`<p style="color:var(--muted);font-size:12px;">${e.message}</p>`;
@@ -421,52 +430,56 @@ function renderSleepStages(stages,total){
       <div class="stage-name">${label}</div>
       <div class="stage-bar-bg"><div class="stage-bar" style="width:${pct}%;background:${color}"></div></div>
       <div class="stage-pct" style="color:${color}">${pct}%</div>
-      <div style="font-size:11px;color:var(--muted);width:46px;text-align:right">${h>0?h+'h ':''}${m}m</div>
+      <div style="font-size:11px;color:var(--muted);width:46px;text-align:right">${h>0?h+'h ':''} ${m}m</div>
     </div>`;
   }).join('');
 }
 
-// ── CALORIES — POST dailyRollUp ──
+// ── CALORIES: POST dailyRollUp — correct type is active-energy-burned ──
 async function loadCalories(days){
   try{
-    const body = {
+    const body={
       range:{
-        start:{ date:civilDate(days-1), time:{hours:0,minutes:0,seconds:0} },
-        end:  { date:civilDate(0),      time:{hours:23,minutes:59,seconds:59} }
+        start:{date:civilDateObj(days-1),time:{hours:0,minutes:0,seconds:0}},
+        end:  {date:civilDateObj(0),     time:{hours:23,minutes:59,seconds:59}}
       },
-      windowSizeDays: 1
+      windowSizeDays:1
     };
-    const data = await apiPost(`${BASE}/totalCalories/dataPoints:dailyRollUp`, body);
-    const points = (data.rollupDataPoints||[]);
-    const values = points.map(p=>Math.round(parseFloat(p.totalCalories?.kilocalories||0)));
-    const labels = points.map((_,i)=>dayLabel(days-1-i));
+    const data=await apiPost(`${BASE}/active-energy-burned/dataPoints:dailyRollUp`,body);
+    const pts=data.rollupDataPoints||[];
+    pts.sort((a,b)=>{
+      const da=a.civilStartTime?.date,db=b.civilStartTime?.date;
+      if(!da||!db) return 0;
+      return new Date(da.year,da.month-1,da.day)-new Date(db.year,db.month-1,db.day);
+    });
+    const values=pts.map(p=>Math.round(parseFloat(p.activeEnergyBurned?.kilocalories||0)));
+    const labels=pts.map(p=>{
+      const d=p.civilStartTime?.date;
+      return d?new Date(d.year,d.month-1,d.day).toLocaleDateString('en-SG',{month:'short',day:'numeric'}):'';
+    });
     chartData.calories={labels,values};
 
     const todayCal=values[values.length-1]||0;
-    const pct=Math.min(Math.round((todayCal/2200)*100),100);
-    document.getElementById('cal-val').innerHTML=todayCal?`${todayCal.toLocaleString()} <span class="metric-unit">kcal</span>`:'N/A';
+    const pct=Math.min(Math.round((todayCal/500)*100),100); // active calories goal ~500
+    document.getElementById('cal-val').innerHTML=todayCal?`${todayCal.toLocaleString()} <span class="metric-unit">kcal active</span>`:'No data';
     document.getElementById('cal-bar').style.width=pct+'%';
-    document.getElementById('cal-trend').innerHTML=pct>=90
-      ?`<span class="trend-up">✓ On track · ${pct}% of goal</span>`
-      :`<span class="trend-down">↓ ${pct}% of goal</span>`;
+    document.getElementById('cal-trend').innerHTML=pct>=80
+      ?`<span class="trend-up">✓ Active goal on track</span>`
+      :`<span class="trend-down">↓ ${pct}% of active goal</span>`;
   }catch(e){
     document.getElementById('cal-val').textContent='N/A';
     console.error('Calories:',e);
   }
 }
 
-// ── HR ZONES — POST dailyRollUp ──
+// ── HR ZONES: GET list (daily-heart-rate-zones only supports list/reconcile) ──
 async function loadHrZones(){
   try{
-    const body = {
-      range:{
-        start:{ date:civilDate(0), time:{hours:0,minutes:0,seconds:0} },
-        end:  { date:civilDate(0), time:{hours:23,minutes:59,seconds:59} }
-      },
-      windowSizeDays: 1
-    };
-    const data = await apiPost(`${BASE}/dailyHeartRateZones/dataPoints:dailyRollUp`, body);
-    const point=(data.rollupDataPoints||[])[0];
+    const today=civilDateStr(0);
+    // filter uses snake_case for daily types
+    const filter=`daily_heart_rate_zones.date >= "${today}" AND daily_heart_rate_zones.date <= "${today}"`;
+    const data=await apiGet(`${BASE}/daily-heart-rate-zones/dataPoints?filter=${encodeURIComponent(filter)}&page_size=5`);
+    const point=(data.dataPoints||[])[0];
     const z=point?.dailyHeartRateZones||{};
     const zones=[
       {label:'Out of range',mins:Math.round(z.outOfRangeActiveMinutes||0),color:'#7a8099'},
@@ -482,31 +495,33 @@ async function loadHrZones(){
 }
 
 function renderHrZoneChart(zones){
-  const ctx=document.getElementById('hrZoneChart').getContext('2d');
-  if(hrZoneChart) hrZoneChart.destroy();
+  const wrap=document.getElementById('hrZoneChart').parentElement;
+  if(hrZoneChart){hrZoneChart.destroy();hrZoneChart=null;}
   if(!zones.length){
-    document.getElementById('hrZoneChart').parentElement.innerHTML='<p style="color:var(--muted);font-size:12px;text-align:center;padding:2rem 0">No HR zone data today</p>';
+    wrap.innerHTML='<p style="color:var(--muted);font-size:12px;text-align:center;padding:2rem 0">No HR zone data today</p>';
     return;
   }
+  if(!wrap.querySelector('canvas')){
+    const c=document.createElement('canvas');c.id='hrZoneChart';wrap.appendChild(c);
+  }
+  const ctx=document.getElementById('hrZoneChart').getContext('2d');
   hrZoneChart=new Chart(ctx,{type:'doughnut',data:{labels:zones.map(z=>z.label),datasets:[{data:zones.map(z=>z.mins),backgroundColor:zones.map(z=>z.color),borderWidth:0,hoverOffset:4}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',plugins:{legend:{display:false}}}});
   document.getElementById('hr-zone-legend').innerHTML=zones.map(z=>`<span style="display:flex;align-items:center;gap:4px;"><span style="width:8px;height:8px;border-radius:2px;background:${z.color};flex-shrink:0;"></span>${z.label} · ${z.mins}m</span>`).join('');
 }
 
 // ── MAIN CHART ──
 const tabConfig={
-  steps:   {title:'Steps over time',         sub:'Daily step count vs 10,000 goal',color:'#4f8ef7',goal:10000},
-  heart:   {title:'Resting heart rate',       sub:'Daily resting BPM',             color:'#f87171',goal:null},
-  sleep:   {title:'Sleep duration',           sub:'Hours per night',               color:'#a78bfa',goal:8},
-  calories:{title:'Calories burned over time',sub:'Daily total vs goal',           color:'#fbbf24',goal:2200}
+  steps:   {title:'Steps over time',          sub:'Daily step count vs 10,000 goal',color:'#4f8ef7',goal:10000},
+  heart:   {title:'Resting heart rate',        sub:'Daily resting BPM',             color:'#f87171',goal:null},
+  sleep:   {title:'Sleep duration',            sub:'Hours per night',               color:'#a78bfa',goal:8},
+  calories:{title:'Active calories over time', sub:'Daily active calories vs 500 goal',color:'#fbbf24',goal:500}
 };
-
 function switchTab(el,tab){
   currentTab=tab;
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
   el.classList.add('active');
   renderMainChart();
 }
-
 function renderMainChart(){
   const cfg=tabConfig[currentTab];
   document.getElementById('main-chart-title').textContent=cfg.title;
