@@ -335,7 +335,7 @@ async function loadHeartRate(days){
     const start=civilDateStr(days-1);
     const end=civilDateStr(0);
     // filter uses snake_case: daily_resting_heart_rate
-    const filter=`daily_resting_heart_rate.date >= "${start}" AND daily_resting_heart_rate.date <= "${end}"`;
+    const filter=`daily_resting_heart_rate.date >= "${start}" AND daily_resting_heart_rate.date < "${end}"`;
     const data=await apiGet(`${BASE}/daily-resting-heart-rate/dataPoints?filter=${encodeURIComponent(filter)}&page_size=100`);
     const pts=(data.dataPoints||[]).sort((a,b)=>{
       const da=a.dailyRestingHeartRate?.date,db=b.dailyRestingHeartRate?.date;
@@ -371,7 +371,7 @@ async function loadSleep(){
     const yesterday=civilDateStr(1);
     const today=civilDateStr(0);
     // sleep civil_start_time — no Z suffix (civil time not UTC)
-    const filter=`sleep.interval.civil_start_time >= "${yesterday}T20:00:00" AND sleep.interval.civil_start_time < "${today}T14:00:00"`;
+    const filter=`sleep.interval.start_time >= "${yesterday}T12:00:00Z" AND sleep.interval.start_time < "${today}T06:00:00Z"`;
     const data=await apiGet(`${BASE}/sleep/dataPoints?filter=${encodeURIComponent(filter)}&page_size=25`);
     const pts=data.dataPoints||[];
 
@@ -477,7 +477,7 @@ async function loadHrZones(){
   try{
     const today=civilDateStr(0);
     // filter uses snake_case for daily types
-    const filter=`daily_heart_rate_zones.date >= "${today}" AND daily_heart_rate_zones.date <= "${today}"`;
+    const filter=`daily_heart_rate_zones.date >= "${today}" AND daily_heart_rate_zones.date < "${today}"`;
     const data=await apiGet(`${BASE}/daily-heart-rate-zones/dataPoints?filter=${encodeURIComponent(filter)}&page_size=5`);
     const point=(data.dataPoints||[])[0];
     const z=point?.dailyHeartRateZones||{};
