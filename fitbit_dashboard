@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fitbit Health Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0d0f12;
+      --surface: #151820;
+      --surface2: #1c2030;
+      --border: rgba(255,255,255,0.07);
+      --border2: rgba(255,255,255,0.12);
+      --text: #e8eaf0;
+      --muted: #7a8099;
+      --accent: #4f8ef7;
+      --accent2: #7c5cfc;
+      --green: #34d399;
+      --coral: #f87171;
+      --amber: #fbbf24;
+      --purple: #a78bfa;
+      --radius: 14px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+
+    /* ── CONFIG BANNER ── */
+    #config-banner {
+      background: linear-gradient(90deg, #1a1f35, #0d1526);
+      border-bottom: 1px solid var(--border2);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    #config-banner label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+    #config-banner input {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border2);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 6px 10px;
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      width: 280px;
+    }
+    #config-banner input:focus { outline: none; border-color: var(--accent); }
+    .save-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .save-btn:hover { opacity: 0.85; }
+
+    /* ── CONNECT SCREEN ── */
+    #connect-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 60px);
+      padding: 2rem;
+      text-align: center;
+    }
+    .logo-ring {
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 0 40px rgba(79,142,247,0.3);
+    }
+    .logo-ring svg { width: 38px; height: 38px; }
+    #connect-screen h1 { font-size: 28px; font-weight: 600; margin-bottom: 10px; }
+    #connect-screen p { color: var(--muted); max-width: 380px; font-size: 15px; line-height: 1.6; }
+    .connect-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 2rem;
+      background: #fff;
+      color: #333;
+      border: none;
+      padding: 14px 28px;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 500;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    .connect-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.5); }
+    .scopes-info {
+      margin-top: 1.5rem;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .scope-pill {
+      background: rgba(79,142,247,0.1);
+      border: 1px solid rgba(79,142,247,0.25);
+      color: var(--accent);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+    }
+    .error-box {
+      margin-top: 1.5rem;
+      background: rgba(248,113,113,0.1);
+      border: 1px solid rgba(248,113,113,0.3);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      color: var(--coral);
+      font-size: 13px;
+      max-width: 420px;
+    }
+
+    /* ── DASHBOARD ── */
+    #dashboard { display: none; max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem 4rem; }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .user-info { display: flex; align-items: center; gap: 12px; }
+    .avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px; font-weight: 600; color: #fff;
+    }
+    .user-info h2 { font-size: 17px; font-weight: 500; }
+    .user-info span { font-size: 12px; color: var(--muted); }
+    .sync-badge {
+      display: flex; align-items: center; gap: 6px;
+      background: rgba(52,211,153,0.1);
+      border: 1px solid rgba(52,211,153,0.2);
+      color: var(--green);
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 20px;
+    }
+    .sync-dot { width: 6px; height: 6px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+    /* ── METRIC CARDS ── */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 14px;
+      margin-bottom: 2rem;
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .metric-card:hover { border-color: var(--border2); }
+    .metric-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+    }
+    .metric-card.steps::before { background: var(--accent); }
+    .metric-card.heart::before { background: var(--coral); }
+    .metric-card.sleep::before { background: var(--purple); }
+    .metric-card.calories::before { background: var(--amber); }
+    .metric-icon {
+      width: 34px; height: 34px;
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+    .metric-card.steps .metric-icon { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .metric-card.heart .metric-icon { background: rgba(248,113,113,0.15); color: var(--coral); }
+    .metric-card.sleep .metric-icon { background: rgba(167,139,250,0.15); color: var(--purple); }
+    .metric-card.calories .metric-icon { background: rgba(251,191,36,0.15); color: var(--amber); }
+    .metric-label { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .metric-value { font-size: 28px; font-weight: 600; line-height: 1.1; }
+    .metric-unit { font-size: 14px; font-weight: 400; color: var(--muted); }
+    .metric-trend { font-size: 11px; margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+    .trend-up { color: var(--green); }
+    .trend-down { color: var(--coral); }
+    .metric-bar-bg { height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; margin-top: 12px; }
+    .metric-bar { height: 4px; border-radius: 2px; transition: width 0.8s ease; }
+    .metric-card.steps .metric-bar { background: var(--accent); }
+    .metric-card.heart .metric-bar { background: var(--coral); }
+    .metric-card.sleep .metric-bar { background: var(--purple); }
+    .metric-card.calories .metric-bar { background: var(--amber); }
+
+    /* ── CHART AREA ── */
+    .chart-row { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
+    @media (max-width: 700px) { .chart-row { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+    }
+    .card-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1rem; flex-wrap: wrap; gap: 8px;
+    }
+    .card-title { font-size: 14px; font-weight: 500; }
+    .card-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    select.range-select {
+      background: var(--surface2);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      padding: 5px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+    }
+
+    .tab-strip { display: flex; gap: 4px; margin-bottom: 1rem; flex-wrap: wrap; }
+    .tab {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+    }
+    .tab.active {
+      background: rgba(79,142,247,0.15);
+      border-color: rgba(79,142,247,0.4);
+      color: var(--accent);
+    }
+
+    .chart-wrap { position: relative; width: 100%; }
+
+    /* ── SLEEP STAGES ── */
+    .sleep-stages { display: flex; flex-direction: column; gap: 10px; }
+    .stage-row { display: flex; align-items: center; gap: 10px; }
+    .stage-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .stage-name { font-size: 12px; color: var(--muted); width: 50px; flex-shrink: 0; }
+    .stage-bar-bg { flex: 1; height: 6px; background: rgba(255,255,255,0.07); border-radius: 3px; }
+    .stage-bar { height: 6px; border-radius: 3px; transition: width 0.6s ease; }
+    .stage-pct { font-size: 12px; font-weight: 500; width: 32px; text-align: right; }
+
+    /* ── LOADING / ERROR ── */
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      gap: 10px; padding: 2rem;
+      font-size: 13px; color: var(--muted);
+    }
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── FOOTER ── */
+    .footer-note {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+    .signout-btn {
+      background: none;
+      border: 1px solid var(--border2);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: 'DM Sans', sans-serif;
+      transition: all 0.15s;
+    }
+    .signout-btn:hover { border-color: var(--coral); color: var(--coral); }
+  </style>
+</head>
+<body>
+
+<!-- ── CONFIG BANNER ── -->
+<div id="config-banner">
+  <label>Google OAuth Client ID</label>
+  <input type="text" id="client-id-input" placeholder="Paste your Client ID here (ends with .apps.googleusercontent.com)" />
+  <button class="save-btn" onclick="saveClientId()">Save &amp; Connect</button>
+  <span style="font-size:11px;color:var(--muted);margin-left:4px;">
+    → <a href="https://console.cloud.google.com/apis/credentials" target="_blank" style="color:var(--accent);">Get from Google Cloud Console</a>
+  </span>
+</div>
+
+<!-- ── CONNECT SCREEN ── -->
+<div id="connect-screen">
+  <div class="logo-ring">
+    <svg viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M19 7C12.37 7 7 12.37 7 19C7 25.63 12.37 31 19 31C25.63 31 31 25.63 31 19C31 12.37 25.63 7 19 7Z" stroke="white" stroke-width="2"/>
+      <path d="M19 13V19L23 21" stroke="white" stroke-width="2" stroke-linecap="round"/>
+      <circle cx="19" cy="19" r="2" fill="white"/>
+    </svg>
+  </div>
+  <h1>Fitbit health dashboard</h1>
+  <p>Connect your Google account to read real Fitbit data via the Google Health API — steps, heart rate, sleep, and more.</p>
+
+  <div class="scopes-info">
+    <span class="scope-pill">✦ Activity &amp; Steps</span>
+    <span class="scope-pill">✦ Heart Rate</span>
+    <span class="scope-pill">✦ Sleep</span>
+    <span class="scope-pill">✦ Health Metrics</span>
+    <span class="scope-pill">✦ Profile</span>
+  </div>
+
+  <button class="connect-btn" onclick="startOAuth()">
+    <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+    Sign in with Google
+  </button>
+
+  <div id="connect-error" class="error-box" style="display:none;"></div>
+
+  <p style="margin-top:1.5rem;font-size:12px;">
+    Reads data only · No data is stored · Free tier · 
+    <a href="https://developers.google.com/health/scopes" target="_blank" style="color:var(--accent);">View scopes</a>
+  </p>
+</div>
+
+<!-- ── DASHBOARD ── -->
+<div id="dashboard">
+  <div class="top-bar">
+    <div class="user-info">
+      <div class="avatar" id="user-avatar">?</div>
+      <div>
+        <h2 id="user-name">Loading...</h2>
+        <span id="user-email"></span>
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <div class="sync-badge"><span class="sync-dot"></span> Live from Fitbit</div>
+      <select class="range-select" id="range-select" onchange="loadAllData()">
+        <option value="7">Last 7 days</option>
+        <option value="14">Last 14 days</option>
+        <option value="30">Last 30 days</option>
+      </select>
+      <button class="signout-btn" onclick="signOut()">Sign out</button>
+    </div>
+  </div>
+
+  <!-- Metric Cards -->
+  <div class="metrics-grid">
+    <div class="metric-card steps">
+      <div class="metric-icon">🚶</div>
+      <div class="metric-label">Steps today</div>
+      <div class="metric-value" id="steps-val"><span class="spinner" style="display:inline-block;"></span></div>
+      <div class="metric-trend" id="steps-trend"></div>
+      <div class="metric-bar-bg"><div class="metric-bar" id="steps-bar" style="width:0%"></div></div>
+    </div>
+    <div class="metric-card heart">
+      <div class="metric-icon">❤️</div>
+      <div class="metric-label">Resting heart rate</div>
+      <div class="metric-value" id="hr-val"><span class="spinner" style="display:inline-block;"></span></div>
+      <div class="metric-trend" id="hr-trend"></div>
+      <div class="metric-bar-bg"><div class="metric-bar" id="hr-bar" style="width:0%"></div></div>
+    </div>
+    <div class="metric-card sleep">
+      <div class="metric-icon">🌙</div>
+      <div class="metric-label">Sleep last night</div>
+      <div class="metric-value" id="sleep-val"><span class="spinner" style="display:inline-block;"></span></div>
+      <div class="metric-trend" id="sleep-trend"></div>
+      <div class="metric-bar-bg"><div class="metric-bar" id="sleep-bar" style="width:0%"></div></div>
+    </div>
+    <div class="metric-card calories">
+      <div class="metric-icon">🔥</div>
+      <div class="metric-label">Calories burned</div>
+      <div class="metric-value" id="cal-val"><span class="spinner" style="display:inline-block;"></span></div>
+      <div class="metric-trend" id="cal-trend"></div>
+      <div class="metric-bar-bg"><div class="metric-bar" id="cal-bar" style="width:0%"></div></div>
+    </div>
+  </div>
+
+  <!-- Main Chart -->
+  <div class="card" style="margin-bottom:14px;">
+    <div class="card-header">
+      <div>
+        <div class="card-title" id="main-chart-title">Steps over time</div>
+        <div class="card-sub" id="main-chart-sub">Daily step count vs 10,000 goal</div>
+      </div>
+    </div>
+    <div class="tab-strip">
+      <button class="tab active" onclick="switchTab(this,'steps')">Steps</button>
+      <button class="tab" onclick="switchTab(this,'heart')">Heart rate</button>
+      <button class="tab" onclick="switchTab(this,'sleep')">Sleep</button>
+      <button class="tab" onclick="switchTab(this,'calories')">Calories</button>
+    </div>
+    <div class="chart-wrap" style="height:240px;">
+      <canvas id="mainChart" role="img" aria-label="Line chart of selected health metric over time"></canvas>
+    </div>
+  </div>
+
+  <!-- Sleep Breakdown + HR Zone -->
+  <div class="chart-row">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Sleep breakdown</div>
+          <div class="card-sub">Stages from last night</div>
+        </div>
+      </div>
+      <div class="sleep-stages" id="sleep-stages">
+        <div class="loading"><div class="spinner"></div> Loading sleep data…</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Heart rate zones</div>
+          <div class="card-sub">Today's active minutes</div>
+        </div>
+      </div>
+      <div class="chart-wrap" style="height:180px;">
+        <canvas id="hrZoneChart" role="img" aria-label="Doughnut chart showing time spent in each heart rate zone today"></canvas>
+      </div>
+      <div id="hr-zone-legend" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;font-size:11px;color:var(--muted);"></div>
+    </div>
+  </div>
+
+  <div class="footer-note">
+    Data sourced from Google Health API · Fitbit device data · Read-only access
+  </div>
+</div>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────────────────────────
+const REDIRECT_URI = window.location.origin + window.location.pathname;
+
+// Google Health API scopes (read-only)
+const SCOPES = [
+  'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly',
+  'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly',
+  'https://www.googleapis.com/auth/googlehealth.sleep.readonly',
+  'https://www.googleapis.com/auth/googlehealth.profile.readonly',
+  'openid',
+  'profile',
+  'email'
+].join(' ');
+
+const BASE_URL = 'https://health.googleapis.com/v4/users/me/dataTypes';
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let accessToken = null;
+let mainChart = null;
+let hrZoneChart = null;
+let currentTab = 'steps';
+let chartData = {};
+
+// ─── CLIENT ID SETUP ─────────────────────────────────────────────────────────
+function getClientId() {
+  return localStorage.getItem('ghealth_client_id') || '';
+}
+
+function saveClientId() {
+  const val = document.getElementById('client-id-input').value.trim();
+  if (!val) { alert('Please enter your Client ID first.'); return; }
+  localStorage.setItem('ghealth_client_id', val);
+  startOAuth();
+}
+
+window.addEventListener('load', () => {
+  const saved = getClientId();
+  if (saved) document.getElementById('client-id-input').value = saved;
+
+  // Check for OAuth callback (token in URL hash)
+  const hash = new URLSearchParams(window.location.hash.replace('#', '?').slice(1));
+  const token = hash.get('access_token');
+  const error = hash.get('error');
+
+  if (error) {
+    showConnectError('OAuth error: ' + error);
+    window.history.replaceState({}, document.title, window.location.pathname);
+    return;
+  }
+
+  if (token) {
+    accessToken = token;
+    window.history.replaceState({}, document.title, window.location.pathname);
+    showDashboard();
+    return;
+  }
+
+  // Check for stored token
+  const stored = sessionStorage.getItem('ghealth_token');
+  if (stored) {
+    accessToken = stored;
+    showDashboard();
+  }
+});
+
+// ─── OAUTH ───────────────────────────────────────────────────────────────────
+function startOAuth() {
+  const clientId = getClientId();
+  if (!clientId) {
+    showConnectError('Please enter your Google OAuth Client ID in the banner above first.');
+    return;
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: REDIRECT_URI,
+    response_type: 'token',       // Implicit flow for pure frontend (no backend)
+    scope: SCOPES,
+    include_granted_scopes: 'true',
+    prompt: 'consent'
+  });
+
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+}
+
+function showConnectError(msg) {
+  const el = document.getElementById('connect-error');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+}
+
+function signOut() {
+  sessionStorage.removeItem('ghealth_token');
+  accessToken = null;
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('connect-screen').style.display = 'flex';
+}
+
+// ─── DASHBOARD ───────────────────────────────────────────────────────────────
+async function showDashboard() {
+  sessionStorage.setItem('ghealth_token', accessToken);
+  document.getElementById('connect-screen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  await Promise.all([loadProfile(), loadAllData()]);
+}
+
+// ─── API HELPERS ─────────────────────────────────────────────────────────────
+async function apiGet(url) {
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+  if (res.status === 401) { signOut(); throw new Error('Token expired'); }
+  if (!res.ok) throw new Error(`API error ${res.status}: ${await res.text()}`);
+  return res.json();
+}
+
+function isoDate(daysAgo = 0) {
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().split('T')[0];
+}
+
+function dayLabels(n) {
+  const labels = [];
+  for (let i = n - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    labels.push(d.toLocaleDateString('en-SG', { month: 'short', day: 'numeric' }));
+  }
+  return labels;
+}
+
+// ─── PROFILE ─────────────────────────────────────────────────────────────────
+async function loadProfile() {
+  try {
+    // Get Google profile via userinfo
+    const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    }).then(r => r.json());
+
+    const name = info.name || info.email || 'You';
+    document.getElementById('user-name').textContent = name;
+    document.getElementById('user-email').textContent = info.email || '';
+    document.getElementById('user-avatar').textContent = name.charAt(0).toUpperCase();
+  } catch (e) {
+    document.getElementById('user-name').textContent = 'Connected';
+  }
+}
+
+// ─── LOAD ALL DATA ────────────────────────────────────────────────────────────
+async function loadAllData() {
+  const days = parseInt(document.getElementById('range-select').value);
+
+  await Promise.all([
+    loadSteps(days),
+    loadHeartRate(days),
+    loadSleep(),
+    loadCalories(days),
+    loadHrZones()
+  ]);
+
+  renderMainChart();
+}
+
+// ─── STEPS ───────────────────────────────────────────────────────────────────
+async function loadSteps(days) {
+  try {
+    const today = isoDate(0);
+    const startDay = isoDate(days - 1);
+
+    // Daily rollup for steps
+    const url = `${BASE_URL}/steps/dataPoints:dailyRollUp?startTime=${startDay}T00:00:00Z&endTime=${today}T23:59:59Z`;
+    const data = await apiGet(url);
+
+    const points = (data.dataPoints || []).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const values = points.map(p => parseInt(p.value?.intVal || p.value?.fpVal || 0));
+    const labels = points.map(p => {
+      const d = new Date(p.startTime);
+      return d.toLocaleDateString('en-SG', { month: 'short', day: 'numeric' });
+    });
+
+    chartData.steps = { labels, values };
+
+    // Today's count (last point)
+    const todaySteps = values[values.length - 1] || 0;
+    const avg = values.length > 1 ? Math.round(values.slice(0, -1).reduce((a, b) => a + b, 0) / (values.length - 1)) : todaySteps;
+    const pct = Math.min(Math.round((todaySteps / 10000) * 100), 100);
+
+    document.getElementById('steps-val').innerHTML = `${todaySteps.toLocaleString()} <span class="metric-unit">steps</span>`;
+    document.getElementById('steps-bar').style.width = pct + '%';
+    const diff = todaySteps - avg;
+    document.getElementById('steps-trend').innerHTML = diff >= 0
+      ? `<span class="trend-up">↑ +${diff.toLocaleString()} vs avg · ${pct}% of goal</span>`
+      : `<span class="trend-down">↓ ${diff.toLocaleString()} vs avg · ${pct}% of goal</span>`;
+  } catch (e) {
+    document.getElementById('steps-val').textContent = 'N/A';
+    document.getElementById('steps-trend').textContent = 'Could not load';
+    console.error('Steps error:', e);
+  }
+}
+
+// ─── HEART RATE ───────────────────────────────────────────────────────────────
+async function loadHeartRate(days) {
+  try {
+    const today = isoDate(0);
+    const startDay = isoDate(days - 1);
+
+    const url = `${BASE_URL}/dailyRestingHeartRate/dataPoints:dailyRollUp?startTime=${startDay}T00:00:00Z&endTime=${today}T23:59:59Z`;
+    const data = await apiGet(url);
+
+    const points = (data.dataPoints || []).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const values = points.map(p => Math.round(parseFloat(p.value?.fpVal || p.value?.intVal || 0)));
+    const labels = points.map(p => {
+      const d = new Date(p.startTime);
+      return d.toLocaleDateString('en-SG', { month: 'short', day: 'numeric' });
+    });
+
+    chartData.heart = { labels, values };
+
+    const todayHr = values[values.length - 1] || 0;
+    const avg = values.length > 1 ? Math.round(values.slice(0, -1).reduce((a, b) => a + b, 0) / (values.length - 1)) : todayHr;
+    const pct = Math.min(Math.round(((todayHr - 40) / 60) * 100), 100);
+    const diff = todayHr - avg;
+
+    document.getElementById('hr-val').innerHTML = `${todayHr} <span class="metric-unit">bpm</span>`;
+    document.getElementById('hr-bar').style.width = pct + '%';
+    document.getElementById('hr-trend').innerHTML = diff <= 0
+      ? `<span class="trend-up">↓ ${Math.abs(diff)} vs avg · Good</span>`
+      : `<span class="trend-down">↑ +${diff} vs avg</span>`;
+  } catch (e) {
+    document.getElementById('hr-val').textContent = 'N/A';
+    console.error('Heart rate error:', e);
+  }
+}
+
+// ─── SLEEP ────────────────────────────────────────────────────────────────────
+async function loadSleep() {
+  try {
+    const yesterday = isoDate(1);
+    const url = `${BASE_URL}/sleep/dataPoints?startTime=${yesterday}T18:00:00Z&endTime=${isoDate(0)}T12:00:00Z`;
+    const data = await apiGet(url);
+
+    const points = data.dataPoints || [];
+    // Sleep stages: 1=awake,2=light,3=deep,4=rem (per Google Health API)
+    const stages = { deep: 0, light: 0, rem: 0, awake: 0 };
+    points.forEach(p => {
+      const type = p.value?.intVal;
+      const start = new Date(p.startTime);
+      const end = new Date(p.endTime);
+      const mins = (end - start) / 60000;
+      if (type === 3) stages.deep += mins;
+      else if (type === 2) stages.light += mins;
+      else if (type === 4) stages.rem += mins;
+      else if (type === 1) stages.awake += mins;
+    });
+
+    const totalMins = stages.deep + stages.light + stages.rem + stages.awake;
+    const totalHours = Math.floor(totalMins / 60);
+    const totalMinsRem = Math.round(totalMins % 60);
+
+    document.getElementById('sleep-val').innerHTML = totalMins > 0
+      ? `${totalHours}h ${totalMinsRem}m`
+      : 'No data';
+
+    const pct = Math.min(Math.round((totalMins / 480) * 100), 100);
+    document.getElementById('sleep-bar').style.width = pct + '%';
+    document.getElementById('sleep-trend').innerHTML = totalMins >= 420
+      ? `<span class="trend-up">↑ Above 7h goal</span>`
+      : `<span class="trend-down">↓ Below 7h goal</span>`;
+
+    // Sleep stages panel
+    renderSleepStages(stages, totalMins);
+
+    // Build weekly sleep data for chart
+    chartData.sleep = { labels: [], values: [] };
+  } catch (e) {
+    document.getElementById('sleep-val').textContent = 'N/A';
+    console.error('Sleep error:', e);
+  }
+}
+
+function renderSleepStages(stages, total) {
+  const defs = [
+    { key: 'deep',  label: 'Deep',  color: '#4f8ef7' },
+    { key: 'light', label: 'Light', color: '#7a8099' },
+    { key: 'rem',   label: 'REM',   color: '#a78bfa' },
+    { key: 'awake', label: 'Awake', color: '#f87171' }
+  ];
+
+  const el = document.getElementById('sleep-stages');
+  if (total === 0) { el.innerHTML = '<p style="color:var(--muted);font-size:13px;">No sleep data for last night.</p>'; return; }
+
+  el.innerHTML = defs.map(({ key, label, color }) => {
+    const mins = Math.round(stages[key]);
+    const pct = total > 0 ? Math.round((mins / total) * 100) : 0;
+    const h = Math.floor(mins / 60), m = mins % 60;
+    return `
+      <div class="stage-row">
+        <div class="stage-dot" style="background:${color}"></div>
+        <div class="stage-name">${label}</div>
+        <div class="stage-bar-bg"><div class="stage-bar" style="width:${pct}%;background:${color}"></div></div>
+        <div class="stage-pct" style="color:${color}">${pct}%</div>
+        <div style="font-size:11px;color:var(--muted);width:46px;text-align:right">${h > 0 ? h + 'h ' : ''}${m}m</div>
+      </div>`;
+  }).join('');
+}
+
+// ─── CALORIES ────────────────────────────────────────────────────────────────
+async function loadCalories(days) {
+  try {
+    const today = isoDate(0);
+    const startDay = isoDate(days - 1);
+
+    const url = `${BASE_URL}/totalCalories/dataPoints:dailyRollUp?startTime=${startDay}T00:00:00Z&endTime=${today}T23:59:59Z`;
+    const data = await apiGet(url);
+
+    const points = (data.dataPoints || []).sort((a, b) => a.startTime.localeCompare(b.startTime));
+    const values = points.map(p => Math.round(parseFloat(p.value?.fpVal || p.value?.intVal || 0)));
+    const labels = points.map(p => {
+      const d = new Date(p.startTime);
+      return d.toLocaleDateString('en-SG', { month: 'short', day: 'numeric' });
+    });
+
+    chartData.calories = { labels, values };
+
+    const todayCal = values[values.length - 1] || 0;
+    const pct = Math.min(Math.round((todayCal / 2200) * 100), 100);
+    document.getElementById('cal-val').innerHTML = `${todayCal.toLocaleString()} <span class="metric-unit">kcal</span>`;
+    document.getElementById('cal-bar').style.width = pct + '%';
+    document.getElementById('cal-trend').innerHTML = pct >= 90
+      ? `<span class="trend-up">✓ On track · ${pct}% of goal</span>`
+      : `<span class="trend-down">↓ ${pct}% of goal</span>`;
+  } catch (e) {
+    document.getElementById('cal-val').textContent = 'N/A';
+    console.error('Calories error:', e);
+  }
+}
+
+// ─── HR ZONES ────────────────────────────────────────────────────────────────
+async function loadHrZones() {
+  try {
+    const today = isoDate(0);
+    const url = `${BASE_URL}/dailyHeartRateZones/dataPoints:dailyRollUp?startTime=${today}T00:00:00Z&endTime=${today}T23:59:59Z`;
+    const data = await apiGet(url);
+
+    const point = (data.dataPoints || [])[0];
+    // HR zones stored as arrayVal with zone minute counts
+    const zones = point?.value?.mapVal || {};
+    const zoneData = [
+      { label: 'Out of range', mins: parseInt(zones.outOfRange?.intVal || 0), color: '#7a8099' },
+      { label: 'Fat burn',     mins: parseInt(zones.fatBurn?.intVal || 0),     color: '#fbbf24' },
+      { label: 'Cardio',       mins: parseInt(zones.cardio?.intVal || 0),       color: '#f87171' },
+      { label: 'Peak',         mins: parseInt(zones.peak?.intVal || 0),         color: '#a78bfa' }
+    ].filter(z => z.mins > 0);
+
+    renderHrZoneChart(zoneData);
+  } catch (e) {
+    console.error('HR zones error:', e);
+    renderHrZoneChart([]);
+  }
+}
+
+function renderHrZoneChart(zones) {
+  const ctx = document.getElementById('hrZoneChart').getContext('2d');
+  if (hrZoneChart) hrZoneChart.destroy();
+
+  if (!zones.length) {
+    document.getElementById('hrZoneChart').parentElement.innerHTML =
+      '<p style="color:var(--muted);font-size:12px;text-align:center;padding:2rem 0">No HR zone data today</p>';
+    return;
+  }
+
+  hrZoneChart = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: zones.map(z => z.label),
+      datasets: [{ data: zones.map(z => z.mins), backgroundColor: zones.map(z => z.color), borderWidth: 0, hoverOffset: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, cutout: '70%',
+      plugins: { legend: { display: false } }
+    }
+  });
+
+  document.getElementById('hr-zone-legend').innerHTML = zones.map(z =>
+    `<span style="display:flex;align-items:center;gap:4px;">
+      <span style="width:8px;height:8px;border-radius:2px;background:${z.color};flex-shrink:0;"></span>
+      ${z.label} · ${z.mins}m
+    </span>`
+  ).join('');
+}
+
+// ─── MAIN CHART ───────────────────────────────────────────────────────────────
+const tabConfig = {
+  steps:    { title: 'Steps over time',          sub: 'Daily step count vs 10,000 goal', color: '#4f8ef7', goal: 10000, unit: 'steps' },
+  heart:    { title: 'Resting heart rate',        sub: 'Daily resting BPM',              color: '#f87171', goal: null,  unit: 'bpm' },
+  sleep:    { title: 'Sleep duration',            sub: 'Hours of sleep per night',        color: '#a78bfa', goal: 8,    unit: 'hrs' },
+  calories: { title: 'Calories burned over time', sub: 'Daily total calories vs goal',    color: '#fbbf24', goal: 2200, unit: 'kcal' }
+};
+
+function switchTab(el, tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderMainChart();
+}
+
+function renderMainChart() {
+  const cfg = tabConfig[currentTab];
+  document.getElementById('main-chart-title').textContent = cfg.title;
+  document.getElementById('main-chart-sub').textContent = cfg.sub;
+
+  const raw = chartData[currentTab];
+  if (!raw || !raw.values || !raw.values.length) {
+    if (mainChart) mainChart.destroy();
+    return;
+  }
+
+  const ctx = document.getElementById('mainChart').getContext('2d');
+  if (mainChart) mainChart.destroy();
+
+  const datasets = [{
+    label: cfg.unit,
+    data: raw.values,
+    borderColor: cfg.color,
+    backgroundColor: cfg.color + '18',
+    fill: true,
+    tension: 0.4,
+    pointRadius: raw.values.length <= 10 ? 4 : 2,
+    pointBackgroundColor: cfg.color,
+    borderWidth: 2,
+    pointBorderWidth: 0
+  }];
+
+  if (cfg.goal) {
+    datasets.push({
+      label: 'Goal',
+      data: Array(raw.values.length).fill(cfg.goal),
+      borderColor: 'rgba(255,255,255,0.2)',
+      borderDash: [5, 4],
+      borderWidth: 1.5,
+      pointRadius: 0,
+      fill: false
+    });
+  }
+
+  mainChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: raw.labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: {
+          ticks: { color: '#7a8099', font: { size: 11 }, maxRotation: 45, autoSkip: true, maxTicksLimit: 12 },
+          grid: { display: false }
+        },
+        y: {
+          ticks: { color: '#7a8099', font: { size: 11 } },
+          grid: { color: 'rgba(255,255,255,0.05)' }
+        }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
