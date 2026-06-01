@@ -253,7 +253,7 @@ async function apiPost(url,body){
 }
 
 // Civil date string YYYY-MM-DD, daysAgo=0 means today
-function civilDateStr(daysAgo=0){
+function civilDateStr(daysAgo=0){ // negative = future
   const d=new Date();
   d.setDate(d.getDate()-daysAgo);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -368,11 +368,8 @@ async function loadHeartRate(days){
 // ── SLEEP: GET list with civil_start_time filter ──
 async function loadSleep(){
   try{
-    const yesterday=civilDateStr(1);
-    const today=civilDateStr(0);
-    // sleep civil_start_time — no Z suffix (civil time not UTC)
-    const filter=`sleep.interval.start_time >= "${yesterday}T12:00:00Z" AND sleep.interval.start_time < "${today}T06:00:00Z"`;
-    const data=await apiGet(`${BASE}/sleep/dataPoints?filter=${encodeURIComponent(filter)}&page_size=25`);
+    // Sleep doesn't support filter — fetch latest 25 records and pick last night's
+    const data=await apiGet(`${BASE}/sleep/dataPoints?page_size=25`);
     const pts=data.dataPoints||[];
 
     const stages={deep:0,light:0,rem:0,awake:0};
@@ -477,7 +474,8 @@ async function loadHrZones(){
   try{
     const today=civilDateStr(0);
     // filter uses snake_case for daily types
-    const filter=`daily_heart_rate_zones.date >= "${today}" AND daily_heart_rate_zones.date < "${today}"`;
+    const tomorrow=civilDateStr(-1); // day after today
+    const filter=`daily_heart_rate_zones.date >= "${today}" AND daily_heart_rate_zones.date < "${tomorrow}"`;
     const data=await apiGet(`${BASE}/daily-heart-rate-zones/dataPoints?filter=${encodeURIComponent(filter)}&page_size=5`);
     const point=(data.dataPoints||[])[0];
     const z=point?.dailyHeartRateZones||{};
