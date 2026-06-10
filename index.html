@@ -364,39 +364,27 @@ async function loadHeartRate(days){
     console.error('Heart rate:',e);
   }
 }
-
-// ── SLEEP: GET list with civil_start_time filter ──
 async function loadSleep(){
   try{
-    // Sleep doesn't support filter — fetch latest 25 records and pick last night's
     const data=await apiGet(`${BASE}/sleep/dataPoints?page_size=25`);
     const pts=data.dataPoints||[];
 
+    // Filter out naps, keep only main sleep sessions
+    const mainSleep=pts.filter(p=>!p.sleep?.metadata?.nap);
+    const latest=mainSleep[0];
+
     const stages={deep:0,light:0,rem:0,awake:0};
-    pts.forEach(p=>{
-      const s=p.sleep;
-      if(!s) return;
-      // Duration from interval
-      const startCivil=s.interval?.civilStartTime;
-      const endCivil=s.interval?.civilEndTime;
-      let mins=0;
-      if(startCivil&&endCivil){
-        const st=new Date(startCivil.date.year,startCivil.date.month-1,startCivil.date.day,startCivil.time?.hours||0,startCivil.time?.minutes||0);
-        const en=new Date(endCivil.date.year,endCivil.date.month-1,endCivil.date.day,endCivil.time?.hours||0,endCivil.time?.minutes||0);
-        mins=(en-st)/60000;
-      } else if(p.startTime&&p.endTime){
-        mins=(new Date(p.endTime)-new Date(p.startTime))/60000;
-      }
-      if(mins<=0) return;
-      // Stage classification
-      const classic=s.classicSleepStage?.toString().toUpperCase()||'';
-      const stage=s.stage?.toString().toUpperCase()||'';
-      const combined=classic||stage;
-      if(combined==='3'||combined==='DEEP') stages.deep+=mins;
-      else if(combined==='4'||combined==='REM') stages.rem+=mins;
-      else if(combined==='1'||combined==='AWAKE') stages.awake+=mins;
-      else stages.light+=mins; // LIGHT, ASLEEP, 2, unknown
-    });
+    if(latest){
+      const summary=latest.sleep?.summary?.stagesSummary||[];
+      summary.forEach(s=>{
+        const mins=parseInt(s.minutes||0);
+        const type=s.type?.toUpperCase();
+        if(type==='DEEP') stages.deep+=mins;
+        else if(type==='LIGHT') stages.light+=mins;
+        else if(type==='REM') stages.rem+=mins;
+        else if(type==='AWAKE') stages.awake+=mins;
+      });
+    }
 
     const total=stages.deep+stages.light+stages.rem+stages.awake;
     const h=Math.floor(total/60),m=Math.round(total%60);
@@ -413,7 +401,6 @@ async function loadSleep(){
     console.error('Sleep:',e);
   }
 }
-
 function renderSleepStages(stages,total){
   const defs=[{key:'deep',label:'Deep',color:'#4f8ef7'},{key:'light',label:'Light',color:'#7a8099'},{key:'rem',label:'REM',color:'#a78bfa'},{key:'awake',label:'Awake',color:'#f87171'}];
   const el=document.getElementById('sleep-stages');
