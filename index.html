@@ -151,7 +151,7 @@
     </div>
     <div class="metric-card calories">
       <div class="metric-icon">🔥</div>
-      <div class="metric-label">Calories burned</div>
+      <div class="metric-label">Calories consumed</div>
       <div class="metric-value" id="cal-val"><span class="spinner"></span></div>
       <div class="metric-trend" id="cal-trend"></div>
       <div class="metric-bar-bg"><div class="metric-bar" id="cal-bar" style="width:0%"></div></div>
@@ -442,14 +442,15 @@ async function loadCalories(days){
       },
       windowSizeDays:1
     };
-    const data=await apiPost(`${BASE}/active-energy-burned/dataPoints:dailyRollUp`,body);
+    const data=await apiPost(`${BASE}/nutrition-log/dataPoints:dailyRollUp`,body);
     const pts=data.rollupDataPoints||[];
     pts.sort((a,b)=>{
       const da=a.civilStartTime?.date,db=b.civilStartTime?.date;
       if(!da||!db) return 0;
       return new Date(da.year,da.month-1,da.day)-new Date(db.year,db.month-1,db.day);
     });
-    const values=pts.map(p=>Math.round(parseFloat(p.activeEnergyBurned?.kilocalories||0)));
+    const values=pts.map(p=>Math.round(parseFloat(p.nutritionLog?.calories||0)));
+
     const labels=pts.map(p=>{
       const d=p.civilStartTime?.date;
       return d?new Date(d.year,d.month-1,d.day).toLocaleDateString('en-SG',{month:'short',day:'numeric'}):'';
@@ -458,7 +459,7 @@ async function loadCalories(days){
 
     const todayCal=values[values.length-1]||0;
     const pct=Math.min(Math.round((todayCal/500)*100),100); // active calories goal ~500
-    document.getElementById('cal-val').innerHTML=todayCal?`${todayCal.toLocaleString()} <span class="metric-unit">kcal active</span>`:'No data';
+    document.getElementById('cal-val').innerHTML=todayCal?`${todayCal.toLocaleString()} <span class="metric-unit">kcal consumed</span>`:'No data';
     document.getElementById('cal-bar').style.width=pct+'%';
     document.getElementById('cal-trend').innerHTML=pct>=80
       ?`<span class="trend-up">✓ Active goal on track</span>`
