@@ -364,6 +364,24 @@ async function loadHeartRate(days){
     console.error('Heart rate:',e);
   }
 }
+
+function renderSleepStages(stages,total){
+  const defs=[{key:'deep',label:'Deep',color:'#4f8ef7'},{key:'light',label:'Light',color:'#7a8099'},{key:'rem',label:'REM',color:'#a78bfa'},{key:'awake',label:'Awake',color:'#f87171'}];
+  const el=document.getElementById('sleep-stages');
+  if(total===0){el.innerHTML='<p style="color:var(--muted);font-size:13px;">No sleep data for last night.</p>';return;}
+  el.innerHTML=defs.map(({key,label,color})=>{
+    const mins=Math.round(stages[key]);
+    const pct=total>0?Math.round((mins/total)*100):0;
+    const h=Math.floor(mins/60),m=mins%60;
+    return `<div class="stage-row">
+      <div class="stage-dot" style="background:${color}"></div>
+      <div class="stage-name">${label}</div>
+      <div class="stage-bar-bg"><div class="stage-bar" style="width:${pct}%;background:${color}"></div></div>
+      <div class="stage-pct" style="color:${color}">${pct}%</div>
+      <div style="font-size:11px;color:var(--muted);width:46px;text-align:right">${h>0?h+'h ':''} ${m}m</div>
+    </div>`;
+  }).join('');
+}
 async function loadSleep(){
   try{
     const data=await apiGet(`${BASE}/sleep/dataPoints?page_size=25`);
@@ -404,8 +422,8 @@ async function loadSleep(){
       return t?new Date(t).toLocaleDateString('en-SG',{month:'short',day:'numeric'}):'';
     }).reverse();
     chartData.sleep={labels:sleepLabels,values:sleepValues};
-
-  }catch(e){
+      if(currentTab==='sleep') renderMainChart();
+      }catch(e){
     document.getElementById('sleep-val').textContent='N/A';
     document.getElementById('sleep-stages').innerHTML=`<p style="color:var(--muted);font-size:12px;">${e.message}</p>`;
     console.error('Sleep:',e);
