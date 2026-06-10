@@ -449,7 +449,7 @@ async function loadCalories(days){
       if(!da||!db) return 0;
       return new Date(da.year,da.month-1,da.day)-new Date(db.year,db.month-1,db.day);
     });
-    const values=pts.map(p=>Math.round(parseFloat(p.nutritionLog?.calories||0)));
+  const values=pts.map(p=>Math.round(parseFloat(p.nutritionLog?.energy?.kcalSum||0)));
 
     const labels=pts.map(p=>{
       const d=p.civilStartTime?.date;
